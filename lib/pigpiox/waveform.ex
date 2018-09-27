@@ -9,7 +9,7 @@ defmodule Pigpiox.Waveform do
   Clears all waveforms and any data added.
   """
   @spec clear_all() :: :ok | {:error, atom}
-  def clear_all()  do
+  def clear_all() do
     case Pigpiox.Socket.command(:waveform_clear_all) do
       {:ok, _} -> :ok
       error -> error
@@ -36,9 +36,11 @@ defmodule Pigpiox.Waveform do
   """
   @spec add_generic(pulses :: list(pulse)) :: {:ok, non_neg_integer} | {:error, atom}
   def add_generic(pulses) do
-    extents = Enum.flat_map pulses, fn pulse ->
-      [mask(pulse.gpio_on), mask(pulse.gpio_off), pulse.delay]
-    end
+    extents =
+      Enum.flat_map(pulses, fn pulse ->
+        [mask(pulse.gpio_on), mask(pulse.gpio_off), pulse.delay]
+      end)
+
     Pigpiox.Socket.command(:waveform_add_generic, 0, 0, extents)
   end
 
@@ -164,6 +166,7 @@ defmodule Pigpiox.Waveform do
 
   @spec mask(non_neg_integer) :: non_neg_integer
   defp mask(0), do: 0
+
   defp mask(gpio) do
     1 <<< gpio
   end

@@ -6,7 +6,7 @@ defmodule Pigpiox.Pwm do
   @moduledoc """
   Build and send waveforms with pigpiod.
   """
-  
+
   @doc """
   Sets the current dutycycle and fequency for the hardware PWM on a specific GPIO `pin`
   """
@@ -62,4 +62,3 @@ defmodule Pigpiox.Pwm do
     end
   end
 end
-

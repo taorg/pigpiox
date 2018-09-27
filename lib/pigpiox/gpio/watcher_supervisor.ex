@@ -13,9 +13,10 @@ defmodule Pigpiox.GPIO.WatcherSupervisor do
     Supervisor.start_child(__MODULE__, [gpio, pid])
   end
 
-  @spec init(:ok) :: {:ok, {:supervisor.sup_flags, [:supervisor.child_spec]}}
+  @spec init(:ok) :: {:ok, {:supervisor.sup_flags(), [:supervisor.child_spec()]}}
   def init(:ok) do
-    watcher_spec = Supervisor.child_spec(Pigpiox.GPIO.Watcher, start: {Pigpiox.GPIO.Watcher, :start_link, []})
+    watcher_spec =
+      Supervisor.child_spec(Pigpiox.GPIO.Watcher, start: {Pigpiox.GPIO.Watcher, :start_link, []})
 
     Supervisor.init([watcher_spec], strategy: :simple_one_for_one)
   end
