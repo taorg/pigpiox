@@ -2,6 +2,7 @@ defmodule Pigpiox.Command do
   @moduledoc false
 
   @commands %{
+    # --------GPIO--------------------------------
     set_mode: 0,
     get_mode: 1,
     gpio_read: 3,
@@ -33,7 +34,47 @@ defmodule Pigpiox.Command do
     set_PWM_frequency: 7,
     get_PWM_range: 22,
     set_PWM_range: 6,
-    gpio_PWM: 5
+    gpio_PWM: 5,
+    # --------I2C--------------------------------
+    # Opens an I2C device
+    i2c_open: 54,
+    # Closes an I2C device
+    i2c_close: 55,
+    # SMBus write quick
+    i2c_write_quick: 58,
+    # SMBus write byte
+    i2c_write_byte: 60,
+    # SMBus read byte
+    i2c_read_byte: 59,
+    # SMBus write byte data
+    i2c_write_byte_data: 62,
+    # SMBus write word data
+    i2c_write_word_data: 64,
+    # SMBus read byte data
+    i2c_read_byte_data: 61,
+    # SMBus read word data
+    i2c_read_word_data: 63,
+    # SMBus process call
+    i2c_process_call: 69,
+    # SMBus write block data
+    i2c_write_block_data: 66,
+    # SMBus read block data
+    i2c_read_block_data: 65,
+    # SMBus block process call
+    i2c_block_process_call: 70,
+    # SMBus read I2C block data
+    i2c_read_i2c_block_data: 67,
+    # SMBus write I2C block data
+    i2c_write_i2c_block_data: 68,
+    # Reads the raw I2C device
+    i2c_read_device: 56,
+    # Write the raw I2C device
+    i2c_write_device: 57,
+    # Performs multiple I2C transactions
+    i2c_zip: 92,
+    bb_i2c_open: 90,
+    bb_i2c_close: 89,
+    bb_i2c_zip: 91
   }
   @command_names Map.keys(@commands)
 
