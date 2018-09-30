@@ -21,3 +21,7 @@ erl_crash.dump
 
 #Visual Studio elixir LS
 .elixir_ls
+
+#IntelliJ
+.idea
+*.iml
