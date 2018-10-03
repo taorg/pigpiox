@@ -236,16 +236,107 @@ defmodule Pigpiox.I2C do
   bytearray containing the bytes.  If there was an error the
   number of bytes read will be less than zero (and will contain
   the error code).
-  (b, d) = pi.i2c_read_block_data(h, 10)
+  (b, d) = read_block_data(h, 10)
+  if b >= 0:
+     # process data
+  else:
+     # process read failure
+
+  def _u2i(uint32):
+   Converts a 32 bit unsigned number to signed.  If the number
+   is negative it indicates an error.  On error a pigpio
+   exception will be raised if exceptions is True.
+   v = u2i(uint32)
+   if v < 0:
+      if exceptions:
+         raise error(error_text(v))
+   return v
+  #------------------------------------------------------------
+  def _rxbuf(self, count):
+  Returns count bytes from the command socket.
+    ext = bytearray(self.sl.s.recv(count))
+      while len(ext) < count:
+         ext.extend(self.sl.s.recv(count - len(ext)))
+      return ext
+  """
+  @spec read_block_data(non_neg_integer, non_neg_integer) ::
+          {:ok, non_neg_integer} | {:error, atom}
+  def read_block_data(handle, reg) when is_integer(handle) do
+    with {:ok, block} <- Pigpiox.Socket.command(:i2c_read_block_data, handle, reg),
+         do: {:ok, block}
+  end
+
+  @doc """
+  Writes data bytes to the specified register of the device
+  associated with handle and reads a device specified number
+  of bytes of data in return.
+  handle:= >=0 (as returned by a prior call to [*i2c_open*]).
+     reg:= >=0, the device register.
+    data:= the bytes to write.
+  The SMBus 2.0 documentation states that a minimum of 1 byte may
+  be sent and a minimum of 1 byte may be received.  The total
+  number of bytes sent/received must be 32 or less.
+  SMBus 2.0 5.5.8 - Block write-block read.
+  S Addr Wr [A] reg [A] len(data) [A] data0 [A] ... datan [A]
+     S Addr Rd [A] [Count] A [Data] ... A P
+  The returned value is a tuple of the number of bytes read and a
+  bytearray containing the bytes.  If there was an error the
+  number of bytes read will be less than zero (and will contain
+  the error code).
+  (b, d) = block_process_call(h, 10, b'\\x02\\x05\\x00')
+  (b, d) = block_process_call(h, 10, b'abcdr')
+  (b, d) = block_process_call(h, 10, "abracad")
+  (b, d) = block_process_call(h, 10, [2, 5, 16])
+  """
+  @spec block_process_call(non_neg_integer, non_neg_integer, non_neg_integer) ::
+          :ok | {:error, atom}
+  def block_process_call(handle, reg, data) when is_integer(handle) do
+    with {:ok, bytes} <- Pigpiox.Socket.command(:i2c_block_process_call, handle, reg, [data]),
+         do: {:ok, data}
+  end
+
+  @doc """
+  Reads count bytes from the specified register of the device
+  associated with handle .  The count may be 1-32.
+  handle:= >=0 (as returned by a prior call to [*i2c_open*]).
+     reg:= >=0, the device register.
+   count:= >0, the number of bytes to read.
+
+  S Addr Wr [A] reg [A]
+     S Addr Rd [A] [Data] A [Data] A ... A [Data] NA P
+  The returned value is a tuple of the number of bytes read and a
+  bytearray containing the bytes.  If there was an error the
+  number of bytes read will be less than zero (and will contain
+  the error code).
+  (b, d) = read_i2c_block_data(h, 4, 32)
   if b >= 0:
      # process data
   else:
      # process read failure
   """
-  @spec read_block_data(non_neg_integer, non_neg_integer) ::
-  {:ok, non_neg_integer} | {:error, atom}
-def read_block_data(handle, reg) when is_integer(handle) do
-with {:ok, block} <- Pigpiox.Socket.command(:i2c_read_block_data, handle, reg),
- do: {:ok, block}
-end
+  @spec read_i2c_block_data(non_neg_integer, non_neg_integer, non_neg_integer) ::
+          :ok | {:error, atom}
+  def read_i2c_block_data(handle, reg, data) when is_integer(handle) do
+    with {:ok, bytes} <- Pigpiox.Socket.command(:i2c_read_i2c_block_data, handle, reg, [data]),
+         do: {:ok, data}
+  end
+
+  @doc """
+  Writes data bytes to the specified register of the device
+  associated with handle .  1-32 bytes may be written.
+  handle:= >=0 (as returned by a prior call to [*i2c_open*]).
+     reg:= >=0, the device register.
+    data:= the bytes to write.
+  S Addr Wr [A] reg [A] data0 [A] data1 [A] ... [A] datan [NA] P
+  write_i2c_block_data(4, 5, 'hello')
+  write_i2c_block_data(4, 5, b'hello')
+  write_i2c_block_data(5, 0, b'\\x00\\x01\\x22')
+  write_i2c_block_data(6, 2, [0, 1, 0x22])
+  """
+  @spec write_i2c_block_data(non_neg_integer, non_neg_integer, non_neg_integer) ::
+          :ok | {:error, atom}
+  def write_i2c_block_data(handle, length, data) when is_integer(handle) do
+    with {:ok, bytes} <- Pigpiox.Socket.command(:i2c_write_i2c_block_data, handle, length, [data]),
+         do: {:ok, data}
+  end
 end
