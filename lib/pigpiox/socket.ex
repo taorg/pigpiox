@@ -5,7 +5,14 @@ defmodule Pigpiox.Socket do
   @moduledoc """
   Pigpiox.Socket provides an interface to send commands to a running pigpio daemon started by `Pigpiox.Port`
   """
+  @block_map_command %{
+    i2c_read_block_data: 65,
+    i2c_block_process_call: 70,
+    i2c_read_i2c_block_data: 67,
+    bb_i2c_zip: 91
+  }
 
+  @block_command @block_map_command |> Map.to_list() |> Keyword.values()
   @typep state :: :gen_tcp.socket()
 
   @typedoc """
@@ -63,14 +70,45 @@ defmodule Pigpiox.Socket do
 
     :ok = :gen_tcp.send(socket, msg)
 
+    result = handle_command(command, socket)
+
+    response = handle_result(result)
+
+    {:reply, response, socket}
+  end
+
+  defp handle_command(command, socket) when command in @block_command do
+    Logger.debug("Command:#{inspect(command)}")
+    # Logger.debug("recv:#{inspect(:gen_tcp.recv(socket, 0))}")
+    {
+      :ok,
+      <<_original_command::size(96), length::size(32), result::binary>>
+    } = :gen_tcp.recv(socket, 0)
+
+    ulength =
+      length
+      |> :binary.encode_unsigned()
+      |> :binary.bin_to_list()
+      |> Enum.reverse()
+      |> :binary.list_to_bin()
+      |> :binary.decode_unsigned()
+
+    Logger.debug("length:#{inspect(ulength)}<-->result:#{inspect(result)}")
+
+    Pigpiox.Command.each(result)
+
+    result
+  end
+
+  defp handle_command(command, socket) do
+    Logger.debug("Command:#{inspect(command)}")
+
     {
       :ok,
       <<_original_command::size(96), result::native-signed-integer-size(32)>>
     } = :gen_tcp.recv(socket, 0)
 
-    response = handle_result(result)
-
-    {:reply, response, socket}
+    result
   end
 
   @spec handle_result(result :: integer) :: command_result

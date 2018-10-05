@@ -1,5 +1,6 @@
 defmodule Pigpiox.Command do
   @moduledoc false
+  require Logger
 
   @commands %{
     # --------GPIO--------------------------------
@@ -233,5 +234,30 @@ defmodule Pigpiox.Command do
   @spec error_reason(neg_integer) :: :atom
   def error_reason(code) do
     @error_code_map[code] || :unknown_error
+  end
+
+  @spec each(binary()) :: :ok | {:error, any()}
+  def each(binarray) when is_binary(binarray) do
+    Logger.debug("[xyz]:#{inspect(_each(binarray, []))}")
+    :ok
+  end
+
+  defp _each(<<head::size(16), tail::binary>>, result) do
+    rhead =
+      head
+      |> :binary.encode_unsigned()
+      |> :binary.bin_to_list()
+      |> Enum.reverse()
+      |> :binary.list_to_bin()
+      |> :binary.decode_unsigned()
+
+    <<shead::integer-signed-16>> = <<rhead::size(16)>>
+    # Logger.debug("xyz:(#{inspect(shead)})")
+    _each(tail, [shead | result])
+  end
+
+  defp _each(<<>>, result) do
+    rresult = result |> Enum.reverse()
+    rresult
   end
 end

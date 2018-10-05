@@ -4,6 +4,7 @@ defmodule Pigpiox.I2C do
   """
   @type i2c_bus :: 0 | 1
   @type i2c_address :: 0..127
+  require Logger
 
   @doc """
   Returns a handle (>=0) for the device at the I2C bus address.
@@ -111,7 +112,6 @@ defmodule Pigpiox.I2C do
   byte_val:= 0-255, the value to write.
 
   SMBus 2.0 5.5.4 - Write byte.
-
   S Addr Wr [A] reg [A] byte_val [A] P
   # send byte 0xC5 to reg 2 of device 1
   write_byte_data(1, 2, 0xC5)
@@ -130,8 +130,8 @@ defmodule Pigpiox.I2C do
     handle:= >=0 (as returned by a prior call to [*i2c_open*]).
        reg:= >=0, the device register.
   word_val:= 0-65535, the value to write.
-  SMBus 2.0 5.5.4 - Write word.
 
+  SMBus 2.0 5.5.4 - Write word.
   S Addr Wr [A] reg [A] word_val_Low [A] word_val_High [A] P
   # send word 0xA0C5 to reg 5 of device 4
   write_word_data(4, 5, 0xA0C5)
@@ -289,10 +289,10 @@ defmodule Pigpiox.I2C do
   (b, d) = block_process_call(h, 10, [2, 5, 16])
   """
   @spec block_process_call(non_neg_integer, non_neg_integer, non_neg_integer) ::
-          :ok | {:error, atom}
+          {:ok, binary} | {:error, atom}
   def block_process_call(handle, reg, data) when is_integer(handle) do
-    with {:ok, bytes} <- Pigpiox.Socket.command(:i2c_block_process_call, handle, reg, [data]),
-         do: {:ok, data}
+    with {:ok, block} <- Pigpiox.Socket.command(:i2c_block_process_call, handle, reg, [data]),
+         do: {:ok, block}
   end
 
   @doc """
@@ -313,11 +313,18 @@ defmodule Pigpiox.I2C do
      # process data
   else:
      # process read failure
+  RingLogger.attach
+  Pigpiox.I2C.open(1,0x53)
+  Pigpiox.I2C.write_byte_data(0,0x2d,0) # POWER_CTL reset.
+  Pigpiox.I2C.write_byte_data(0,0x2d,8) # POWER_CTL measure.
+  Pigpiox.I2C.write_byte_data(0,0x31,0) # DATA_FORMAT reset.
+  Pigpiox.I2C.write_byte_data(0,0x31,11)# DATA_FORMAT full res +/- 16g.
+  Pigpiox.I2C.read_i2c_block_data(0,0x32,6)
   """
   @spec read_i2c_block_data(non_neg_integer, non_neg_integer, non_neg_integer) ::
-          :ok | {:error, atom}
-  def read_i2c_block_data(handle, reg, data) when is_integer(handle) do
-    with {:ok, bytes} <- Pigpiox.Socket.command(:i2c_read_i2c_block_data, handle, reg, [data]),
+          {:ok, bitstring} | {:error, atom}
+  def read_i2c_block_data(handle, reg, count) when is_integer(handle) and count in 1..32 do
+    with {:ok, data} <- Pigpiox.Socket.command(:i2c_read_i2c_block_data, handle, reg, [count]),
          do: {:ok, data}
   end
 
@@ -335,8 +342,8 @@ defmodule Pigpiox.I2C do
   """
   @spec write_i2c_block_data(non_neg_integer, non_neg_integer, non_neg_integer) ::
           :ok | {:error, atom}
-  def write_i2c_block_data(handle, length, data) when is_integer(handle) do
-    with {:ok, bytes} <- Pigpiox.Socket.command(:i2c_write_i2c_block_data, handle, length, [data]),
-         do: {:ok, data}
+  def write_i2c_block_data(handle, reg, data) when is_integer(handle) do
+    with :ok <- Pigpiox.Socket.command(:i2c_write_i2c_block_data, handle, reg, [data]),
+         do: :ok
   end
 end
