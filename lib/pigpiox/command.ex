@@ -239,7 +239,6 @@ defmodule Pigpiox.Command do
   @spec each(binary()) :: :ok | {:error, any()}
   def each(binarray) when is_binary(binarray) do
     Logger.debug("[xyz]:#{inspect(_each(binarray, []))}")
-    :ok
   end
 
   defp _each(<<head::size(16), tail::binary>>, result) do

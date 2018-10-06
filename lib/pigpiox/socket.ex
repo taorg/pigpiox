@@ -9,7 +9,7 @@ defmodule Pigpiox.Socket do
     i2c_read_block_data: 65,
     i2c_block_process_call: 70,
     i2c_read_i2c_block_data: 67,
-    bb_i2c_zip: 91
+    i2c_read_device: 56
   }
 
   @block_command @block_map_command |> Map.to_list() |> Keyword.values()
@@ -78,24 +78,27 @@ defmodule Pigpiox.Socket do
   end
 
   defp handle_command(command, socket) when command in @block_command do
-    Logger.debug("Command:#{inspect(command)}")
-    # Logger.debug("recv:#{inspect(:gen_tcp.recv(socket, 0))}")
-    {
-      :ok,
-      <<_original_command::size(96), length::size(32), result::binary>>
-    } = :gen_tcp.recv(socket, 0)
+    data_socket =
+      with {:ok, data_socket} <- :gen_tcp.recv(socket, 0),
+           do: data_socket
 
-    ulength =
-      length
-      |> :binary.encode_unsigned()
-      |> :binary.bin_to_list()
-      |> Enum.reverse()
-      |> :binary.list_to_bin()
-      |> :binary.decode_unsigned()
+    # Logger.debug("Command:#{inspect(command)}--bitSize:#{inspect(bit_size(data_socket))}")
 
-    Logger.debug("length:#{inspect(ulength)}<-->result:#{inspect(result)}")
+    result =
+      if !is_atom(data_socket) && bit_size(data_socket) > 128 do
+        <<_original_command::size(96), length::size(32), result::binary>> = data_socket
 
-    Pigpiox.Command.each(result)
+        ulength =
+          length
+          |> :binary.encode_unsigned()
+          |> :binary.bin_to_list()
+          |> Enum.reverse()
+          |> :binary.list_to_bin()
+          |> :binary.decode_unsigned()
+
+        Logger.debug("length:#{inspect(ulength)}<-->result:#{inspect(result)}")
+        result
+      end
 
     result
   end

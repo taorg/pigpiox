@@ -319,7 +319,8 @@ defmodule Pigpiox.I2C do
   Pigpiox.I2C.write_byte_data(0,0x2d,8) # POWER_CTL measure.
   Pigpiox.I2C.write_byte_data(0,0x31,0) # DATA_FORMAT reset.
   Pigpiox.I2C.write_byte_data(0,0x31,11)# DATA_FORMAT full res +/- 16g.
-  Pigpiox.I2C.read_i2c_block_data(0,0x32,6)
+  {:ok, result} = Pigpiox.I2C.read_i2c_block_data(0,0x32,6)
+  Pigpiox.Command.each(result)
   """
   @spec read_i2c_block_data(non_neg_integer, non_neg_integer, non_neg_integer) ::
           {:ok, bitstring} | {:error, atom}
@@ -343,7 +344,44 @@ defmodule Pigpiox.I2C do
   @spec write_i2c_block_data(non_neg_integer, non_neg_integer, non_neg_integer) ::
           :ok | {:error, atom}
   def write_i2c_block_data(handle, reg, data) when is_integer(handle) do
-    with :ok <- Pigpiox.Socket.command(:i2c_write_i2c_block_data, handle, reg, [data]),
+    with {:ok, _} <- Pigpiox.Socket.command(:i2c_write_i2c_block_data, handle, reg, [data]),
+         do: :ok
+  end
+
+  @doc """
+  Returns count bytes read from the raw device associated
+  with handle.
+  handle:= >=0 (as returned by a prior call to [*i2c_open*]).
+   count:= >0, the number of bytes to read.
+  S Addr Rd [A] [Data] A [Data] A ... A [Data] NA P
+  The returned value is a tuple of the number of bytes read and a
+  bytearray containing the bytes.  If there was an error the
+  number of bytes read will be less than zero (and will contain
+  the error code).
+  (count, data) = read_device(h, 12)
+  """
+  @spec read_device(non_neg_integer, non_neg_integer) :: {:ok, bitstring} | {:error, atom}
+  def read_device(handle, count) when is_integer(handle) and count in 1..32 do
+    with {:ok, data} <- Pigpiox.Socket.command(:i2c_read_device, handle, count),
+         do: {:ok, data}
+  end
+
+  @doc """
+      Writes the data bytes to the raw device associated with handle.
+
+      handle:= >=0 (as returned by a prior call to [*i2c_open*]).
+        data:= the bytes to write.
+
+      S Addr Wr [A] data0 [A] data1 [A] ... [A] datan [A] P
+      write_device(h, b"\\x12\\x34\\xA8")
+      write_device(h, b"help")
+      write_device(h, 'help')
+      write_device(h, [23, 56, 231])
+  """
+
+  @spec write_device(non_neg_integer, non_neg_integer) :: :ok | {:error, atom}
+  def write_device(handle, data) when is_integer(handle) do
+    with {:ok, _} <- Pigpiox.Socket.command(:i2c_write_device, handle, 0, [data]),
          do: :ok
   end
 end
