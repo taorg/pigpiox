@@ -216,10 +216,10 @@ defmodule Pigpiox.I2C do
       write_block_data(5, 0, b'\\x00\\x01\\x22')
       write_block_data(6, 2, [0, 1, 0x22])
   """
-  @spec write_block_data(non_neg_integer, non_neg_integer, non_neg_integer) ::
+  @spec write_block_data(non_neg_integer, non_neg_integer, list(non_neg_integer)) ::
           :ok | {:error, atom}
-  def write_block_data(handle, reg, data) when is_integer(handle) do
-    with {:ok, _} <- Pigpiox.Socket.command(:i2c_write_block_data, handle, reg, [data]),
+  def write_block_data(handle, reg, data) when is_integer(handle) and is_list(data) do
+    with {:ok, _} <- Pigpiox.Socket.command(:i2c_write_block_data, handle, reg, data),
          do: :ok
   end
 
@@ -288,10 +288,10 @@ defmodule Pigpiox.I2C do
   (b, d) = block_process_call(h, 10, "abracad")
   (b, d) = block_process_call(h, 10, [2, 5, 16])
   """
-  @spec block_process_call(non_neg_integer, non_neg_integer, non_neg_integer) ::
+  @spec block_process_call(non_neg_integer, non_neg_integer, list(non_neg_integer)) ::
           {:ok, binary} | {:error, atom}
-  def block_process_call(handle, reg, data) when is_integer(handle) do
-    with {:ok, block} <- Pigpiox.Socket.command(:i2c_block_process_call, handle, reg, [data]),
+  def block_process_call(handle, reg, data) when is_integer(handle) and is_list(data) do
+    with {:ok, block} <- Pigpiox.Socket.command(:i2c_block_process_call, handle, reg, data),
          do: {:ok, block}
   end
 
@@ -313,14 +313,6 @@ defmodule Pigpiox.I2C do
      # process data
   else:
      # process read failure
-  RingLogger.attach
-  Pigpiox.I2C.open(1,0x53)
-  Pigpiox.I2C.write_byte_data(0,0x2d,0) # POWER_CTL reset.
-  Pigpiox.I2C.write_byte_data(0,0x2d,8) # POWER_CTL measure.
-  Pigpiox.I2C.write_byte_data(0,0x31,0) # DATA_FORMAT reset.
-  Pigpiox.I2C.write_byte_data(0,0x31,11)# DATA_FORMAT full res +/- 16g.
-  {:ok, result} = Pigpiox.I2C.read_i2c_block_data(0,0x32,6)
-  Pigpiox.Command.each(result)
   """
   @spec read_i2c_block_data(non_neg_integer, non_neg_integer, non_neg_integer) ::
           {:ok, bitstring} | {:error, atom}
@@ -341,10 +333,10 @@ defmodule Pigpiox.I2C do
   write_i2c_block_data(5, 0, b'\\x00\\x01\\x22')
   write_i2c_block_data(6, 2, [0, 1, 0x22])
   """
-  @spec write_i2c_block_data(non_neg_integer, non_neg_integer, non_neg_integer) ::
+  @spec write_i2c_block_data(non_neg_integer, non_neg_integer, list(non_neg_integer)) ::
           :ok | {:error, atom}
-  def write_i2c_block_data(handle, reg, data) when is_integer(handle) do
-    with {:ok, _} <- Pigpiox.Socket.command(:i2c_write_i2c_block_data, handle, reg, [data]),
+  def write_i2c_block_data(handle, reg, data) when is_integer(handle) and is_list(data) do
+    with {:ok, _} <- Pigpiox.Socket.command(:i2c_write_i2c_block_data, handle, reg, data),
          do: :ok
   end
 
@@ -379,9 +371,88 @@ defmodule Pigpiox.I2C do
       write_device(h, [23, 56, 231])
   """
 
-  @spec write_device(non_neg_integer, non_neg_integer) :: :ok | {:error, atom}
-  def write_device(handle, data) when is_integer(handle) do
-    with {:ok, _} <- Pigpiox.Socket.command(:i2c_write_device, handle, 0, [data]),
+  @spec write_device(non_neg_integer, list(non_neg_integer)) :: :ok | {:error, atom}
+  def write_device(handle, data) when is_integer(handle) and is_list(data) do
+    with {:ok, _} <- Pigpiox.Socket.command(:i2c_write_device, handle, 0, data),
          do: :ok
+  end
+
+  @doc """
+  This function executes a sequence of I2C operations.  The
+  operations to be performed are specified by the contents of data
+  which contains the concatenated command codes and associated data.
+  handle:= >=0 (as returned by a prior call to [*i2c_open*]).
+    data:= the concatenated I2C commands, see below
+  The returned value is a tuple of the number of bytes read and a
+  bytearray containing the bytes.  If there was an error the
+  number of bytes read will be less than zero (and will contain
+  the error code).
+  (count, data) = zip(h, [4, 0x53, 7, 1, 0x32, 6, 6, 0])
+
+  The following command codes are supported:
+  Name    @ Cmd & Data @ Meaning
+  End     @ 0          @ No more commands
+  Escape  @ 1          @ Next P is two bytes
+  On      @ 2          @ Switch combined flag on
+  Off     @ 3          @ Switch combined flag off
+  Address @ 4 P        @ Set I2C address to P
+  Flags   @ 5 lsb msb  @ Set I2C flags to lsb + (msb << 8)
+  Read    @ 6 P        @ Read P bytes of data
+  Write   @ 7 P ...    @ Write P bytes of data
+  The address, read, and write commands take a parameter P.
+  Normally P is one byte (0-255).  If the command is preceded by
+  the Escape command then P is two bytes (0-65535, least significant
+  byte first).
+  The address defaults to that associated with the handle.
+  The flags default to 0.  The address and flags maintain their
+  previous value until updated.
+
+  Any read I2C data is concatenated in the returned bytearray.
+
+  Set address 0x53, write 0x32, read 6 bytes
+  Set address 0x1E, write 0x03, read 6 bytes
+  Set address 0x68, write 0x1B, read 8 bytes
+  End
+  0x04 0x53   0x07 0x01 0x32   0x06 0x06
+  0x04 0x1E   0x07 0x01 0x03   0x06 0x06
+  0x04 0x68   0x07 0x01 0x1B   0x06 0x08
+  0x00
+  """
+  @spec zip(non_neg_integer, list(non_neg_integer)) :: :ok | {:error, atom}
+  def zip(handle, data) when is_integer(handle) and is_list(data) do
+    with {:ok, _} <- Pigpiox.Socket.command(:i2c_zip, handle, 0, data),
+         do: :ok
+  end
+
+  @spec zip_address(1..255) :: [1..255, ...]
+  def zip_address(byte) when byte in 1..255 do
+    [0x04, byte]
+  end
+
+  @spec zip_address(1..255, maybe_improper_list()) :: nonempty_maybe_improper_list()
+  def zip_address(byte, r_w) when byte in 1..255 and is_list(r_w) do
+    [0x04, byte | r_w]
+  end
+
+  @spec zip_address(1..255, maybe_improper_list(), maybe_improper_list()) ::
+          nonempty_maybe_improper_list()
+  def zip_address(byte, r_w, w_r) when byte in 1..255 and is_list(r_w) and is_list(w_r) do
+    ops = [r_w | w_r]
+    [0x04, byte | ops]
+  end
+
+  def zip_write(bytes) when is_list(bytes) do
+    l = length(bytes)
+    w_list = [l | bytes]
+    [0x07 | w_list]
+  end
+
+  def zip_read(count) when is_integer(count) do
+    [0x06 | count]
+  end
+
+  @spec zip_end() :: 0
+  def zip_end() do
+    0x00
   end
 end

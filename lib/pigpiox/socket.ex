@@ -82,7 +82,7 @@ defmodule Pigpiox.Socket do
       with {:ok, data_socket} <- :gen_tcp.recv(socket, 0),
            do: data_socket
 
-    # Logger.debug("Command:#{inspect(command)}--bitSize:#{inspect(bit_size(data_socket))}")
+    Logger.debug("Command:#{inspect(command)}--bitSize:#{inspect(bit_size(data_socket))}")
 
     result =
       if !is_atom(data_socket) && bit_size(data_socket) > 128 do

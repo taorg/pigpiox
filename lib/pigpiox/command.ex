@@ -231,6 +231,16 @@ defmodule Pigpiox.Command do
     -143 => :bad_event_id
   }
 
+  @doc """
+  RingLogger.attach
+  Pigpiox.I2C.open(1,0x53)
+  Pigpiox.I2C.write_byte_data(0,0x2d,0) # POWER_CTL reset.
+  Pigpiox.I2C.write_byte_data(0,0x2d,8) # POWER_CTL measure.
+  Pigpiox.I2C.write_byte_data(0,0x31,0) # DATA_FORMAT reset.
+  Pigpiox.I2C.write_byte_data(0,0x31,11)# DATA_FORMAT full res +/- 16g.
+  {:ok, result} = Pigpiox.I2C.read_i2c_block_data(0,0x32,6)
+  Pigpiox.Command.each(result)
+  """
   @spec error_reason(neg_integer) :: :atom
   def error_reason(code) do
     @error_code_map[code] || :unknown_error
