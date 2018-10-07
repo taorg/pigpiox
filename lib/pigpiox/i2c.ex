@@ -429,18 +429,6 @@ defmodule Pigpiox.I2C do
     [0x04, byte]
   end
 
-  @spec zip_address(1..255, maybe_improper_list()) :: nonempty_maybe_improper_list()
-  def zip_address(byte, r_w) when byte in 1..255 and is_list(r_w) do
-    [0x04, byte | r_w]
-  end
-
-  @spec zip_address(1..255, maybe_improper_list(), maybe_improper_list()) ::
-          nonempty_maybe_improper_list()
-  def zip_address(byte, r_w, w_r) when byte in 1..255 and is_list(r_w) and is_list(w_r) do
-    ops = [r_w | w_r]
-    [0x04, byte | ops]
-  end
-
   def zip_write(bytes) when is_list(bytes) do
     l = length(bytes)
     w_list = [l | bytes]
@@ -453,6 +441,17 @@ defmodule Pigpiox.I2C do
 
   @spec zip_end() :: 0
   def zip_end() do
-    0x00
+    [0x00]
+  end
+@doc """
+  This fucntion is expected to add zip command to generate zip block
+  zip_add(zip_address(0x12),zip_write(0x66))
+  |>zip_add(zip_read(4))
+  |>zip_add(zip_write([0x23,0x45]))
+  |>zip_add(zip_end)
+"""
+  @spec zip_add([any()], [any()]) :: [any()]
+  def zip_add(head, tail) when is_list(head) and is_list(tail) do
+    List.flatten(head, tail)
   end
 end
