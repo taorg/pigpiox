@@ -1,10 +1,19 @@
 # Pigpiox
 
-Pigpiox is a wrapper around pigpiod for the Raspberry Pi. For all of pigpio's features, check out its [documentation](http://abyz.co.uk/rpi/pigpio/index.html).
+Pigpiox provides really good interfacing to GPIOs, I2C buses and SPI (work in progress) peripheral, it is an Elixir wrapper around **pigpiod** C deamon for any suitable Linux sysyem. For all of pigpio's features, check out its [documentation](http://abyz.co.uk/rpi/pigpio/index.html).
 
 # Requirements
 
-To use Pigpiox, pigpiod must be included in your firmware. Currently, this is included by default on `nerves_system_rpi0`, but not on other Pi systems.
+To use Pigpiox, pigpiod must be included in your firmware. Currently, this is included by default on any nerves sysyem at nerves_defconfig file as BR2_PACKAGE_PIGPIO=y :
+* [`nerves_system_rpi`](https://github.com/nerves-project/nerves_system_rpi/blob/master/nerves_defconfig)
+* [`nerves_system_rpi0`](https://github.com/nerves-project/nerves_system_rpi0/blob/master/nerves_defconfig)
+* [`nerves_system_rpi2`](https://github.com/nerves-project/nerves_system_rpi2/blob/master/nerves_defconfig)
+* [`nerves_system_rpi3`](https://github.com/nerves-project/nerves_system_rpi3/blob/master/nerves_defconfig)
+* [`nerves_system_x86_64`](https://github.com/nerves-project/nerves_system_x86_64/blob/master/nerves_defconfig)
+* [`nerves_system_x86_64`](https://github.com/nerves-project/nerves_system_x86_64/blob/master/nerves_defconfig)
+
+Currently only  the base Nerves System configuration for the BeagleBone Black, BeagleBone Green, BeagleBone Green Wireless, and PocketBeagle doesn't have **pigpiod** enabled, because there is none of this architecture
+* [`nerves_system_bbb`](https://github.com/nerves-project/nerves_system_bbb/blob/master/nerves_defconfig)
 
 If you'd like to use Pigpiox on one of those systems, customize the nerves system you're interested in, and add `BR2_PACKAGE_PIGPIO=y` to its `nerves_defconfig`.
 
@@ -15,7 +24,7 @@ In your firmware's `mix.exs`, add `pigpiox` to your deps for your system target:
 ```elixir
 def deps(target) do
   [ system(target),
-    {:pigpiox, "~> 0.1"}
+    {:pigpiox, "~> 0.3"}
   ]
 ```
 
@@ -66,6 +75,22 @@ Pigpiox.Waveform.add_generic(pulses)
 Pigpiox.GPIO.set_mode(gpio, :output)
 
 Pigpiox.Waveform.repeat(wave_id)
+```
+## I2C
+The Pigpiox.I2C module provides complete SMBus implementation following [python](http://abyz.co.uk/rpi/pigpio/python.html) pigpiod client library
+```elixir
+{:ok, handle} = I2C.open(1, @pca9685_address)
+
+I2C.write_byte_data(handle, @mode2, @outdrv)
+I2C.write_byte_data(handle, @mode1, @allcall)
+
+{:ok, mode1} = I2C.read_byte_data(handle, @mode1)
+
+mode1 = mode1 &&& ~~~@sleep
+
+I2C.write_byte_data(handle, @mode1, mode1)
+
+Process.sleep(10)
 ```
 
 All documentation available on [hexdocs](https://hexdocs.pm/pigpiox/).
