@@ -5,7 +5,6 @@ defmodule Pigpiox.I2C do
   """
   @type i2c_bus :: 0 | 1
   @type i2c_address :: 0..127
-  require Logger
 
   @doc """
   Returns a handle (>=0) for the device at the I2C bus address.

@@ -81,9 +81,174 @@ defmodule Pigpiox.SPI do
   handle:= >=0 (as returned by a prior call to [*spi_open*]).
   close(h)
   """
-  def close(handle) when handle in 0..9 do
-    with {:ok, handle} <- Pigpiox.Socket.command(:spi_close, handle),
-         do: {:ok, handle}
+  def close(handle) when is_integer(handle) do
+    with {:ok, _} <- Pigpiox.Socket.command(:spi_close, handle),
+         do: :ok
   end
 
+  @doc """
+  Reads count bytes from the SPI device associated with handle.
+  handle:= >=0 (as returned by a prior call to [*spi_open*]).
+  count:= >0, the number of bytes to read.
+
+  The returned value is a tuple of the number of bytes read and a
+  bytearray containing the bytes.  If there was an error the
+  number of bytes read will be less than zero (and will contain
+  the error code).
+
+  (b, d) = read(h, 60) # read 60 bytes from device h
+  if b == 60:
+     # process read data
+  else:
+     # error path
+  """
+  def read(handle, count) when is_integer(handle) do
+    with {:ok, data} <- Pigpiox.Socket.command(:spi_read, handle, count),
+         do: {:ok, data}
+  end
+
+  @doc """
+  Writes the data bytes to the SPI device associated with handle,
+  returning the data bytes read from the device.
+  handle:= >=0 (as returned by a prior call to [*spi_open*]).
+    data:= the bytes to write.
+  The returned value is a tuple of the number of bytes read and a
+  bytearray containing the bytes.  If there was an error the
+  number of bytes read will be less than zero (and will contain
+  the error code).
+
+  (count, rx_data) = xfer(h, b'\\x01\\x80\\x00')
+  (count, rx_data) = xfer(h, [1, 128, 0])
+  (count, rx_data) = xfer(h, b"hello")
+  (count, rx_data) = xfer(h, "hello")
+  """
+  def xfer(handle, data) when is_integer(handle) do
+    with {:ok, data_rx} <- Pigpiox.Socket.command(:spi_xfer, handle, data),
+         do: {:ok, data_rx}
+  end
+
+  @doc """
+  This function selects a set of GPIO for bit banging SPI at a
+  specified baud rate.
+      CS := 0-31
+      MISO := 0-31
+      MOSI := 0-31
+      SCLK := 0-31
+      baud := 50-250000
+  spiFlags := see below
+  spiFlags consists of the least significant 22 bits.
+
+  21 20 19 18 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
+   0  0  0  0  0  0  R  T  0  0  0  0  0  0  0  0  0  0  0  p  m  m
+
+  mm defines the SPI mode, defaults to 0
+  Mode CPOL CPHA
+   0     0    0
+   1     0    1
+   2     1    0
+   3     1    1
+
+  The following constants may be used to set the mode:
+  pigpio.SPI_MODE_0
+  pigpio.SPI_MODE_1
+  pigpio.SPI_MODE_2
+  pigpio.SPI_MODE_3
+
+  Alternatively pigpio.SPI_CPOL and/or pigpio.SPI_CPHA
+  may be used.
+  p is 0 if CS is active low (default) and 1 for active high.
+  pigpio.SPI_CS_HIGH_ACTIVE may be used to set this flag.
+
+  T is 1 if the least significant bit is transmitted on MOSI first,
+  the default (0) shifts the most significant bit out first.
+  pigpio.SPI_TX_LSBFIRST may be used to set this flag.
+
+  R is 1 if the least significant bit is received on MISO first,
+  the default (0) receives the most significant bit first.
+  pigpio.SPI_RX_LSBFIRST may be used to set this flag.
+
+  The other bits in spiFlags should be set to zero.
+
+  Returns 0 if OK, otherwise PI_BAD_USER_GPIO, PI_BAD_SPI_BAUD, or
+  PI_GPIO_IN_USE.
+
+  If more than one device is connected to the SPI bus (defined by
+  SCLK, MOSI, and MISO) each must have its own CS.
+
+  bb_spi_open(10, MISO, MOSI, SCLK, 10000, 0); // device 1
+  bb_spi_open(11, MISO, MOSI, SCLK, 20000, 3); // device 2
+   I p1 CS
+   I p2 0
+   I p3 20
+   extension
+   I MISO
+   I MOSI
+   I SCLK
+   I baud
+   I spi_flags
+  """
+  def bb_spi_open(CS, MISO, MOSI, SCLK, baud \\ 100_000, spi_flags \\ 0) do
+    extends = ["IIIII", MISO, MOSI, SCLK, baud, spi_flags]
+
+    with {:ok, cs} <- Pigpiox.Socket.command(:bb_spi_open, CS, 0, 20, extends),
+         do: {:ok, cs}
+  end
+
+  @doc """
+  This function stops bit banging SPI on a set of GPIO
+  opened with [*bb_spi_open*].
+    CS:= 0-31, the CS GPIO used in a prior call to [*bb_spi_open*]
+
+  Returns 0 if OK, otherwise PI_BAD_USER_GPIO, or PI_NOT_SPI_GPIO.
+  bb_spi_close(CS)
+  """
+  def bb_spi_close(CS) do
+    with {:ok, cs} <- Pigpiox.Socket.command(:bb_spi_close, CS, 0, 0),
+         do: {:ok, cs}
+  end
+
+  @doc """
+  This function executes a bit banged SPI transfer.
+    CS:= 0-31 (as used in a prior call to [*bb_spi_open*])
+  data:= data to be sent
+  The returned value is a tuple of the number of bytes read and a
+  bytearray containing the bytes.  If there was an error the
+  number of bytes read will be less than zero (and will contain
+  the error code).
+  #!/usr/bin/env python
+  import pigpio
+  CE0=5
+  CE1=6
+  MISO=13
+  MOSI=19
+  SCLK=12
+  pi = pigpio.pi()
+  if not pi.connected:
+   exit()
+  pi.bb_spi_open(CE0, MISO, MOSI, SCLK, 10000, 0) # MCP4251 DAC
+  pi.bb_spi_open(CE1, MISO, MOSI, SCLK, 20000, 3) # MCP3008 ADC
+  for i in range(256):
+   count, data = pi.bb_spi_xfer(CE0, [0, i]) # Set DAC value
+   if count == 2:
+      count, data = pi.bb_spi_xfer(CE0, [12, 0]) # Read back DAC
+      if count == 2:
+         set_val = data[1]
+         count, data = pi.bb_spi_xfer(CE1, [1, 128, 0]) # Read ADC
+         if count == 3:
+            read_val = ((data[1]&3)<<8) | data[2]
+            print("{} {}".format(set_val, read_val))
+  pi.bb_spi_close(CE0)
+  pi.bb_spi_close(CE1)
+  pi.stop()
+
+  I p1 CS
+  I p2 0
+  I p3 len
+  extension
+  s len data bytes
+  """
+  def bb_spi_xfer(cs, data) when cs in 0..31 do
+    with {:ok, data_rx} <- Pigpiox.Socket.command(:bb_spi_xfer, cs, data),
+         do: {:ok, data_rx}
+  end
 end
