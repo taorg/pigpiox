@@ -75,7 +75,24 @@ defmodule Pigpiox.Command do
     i2c_zip: 92,
     bb_i2c_open: 90,
     bb_i2c_close: 89,
-    bb_i2c_zip: 91
+    bb_i2c_zip: 91,
+    # --------I2C--------------------------------
+    # Opens a SPI device
+    spi_open: 71,
+    # Closes a SPI device
+    spi_close: 72,
+    # Reads bytes from a SPI device
+    spi_read: 73,
+    # Writes bytes to a SPI device
+    spi_write: 74,
+    # Transfers bytes with a SPI device
+    spi_xfer: 75,
+    # Opens GPIO for bit banging SPI
+    bb_spi_open: 112,
+    # Closes GPIO for bit banging SPI
+    bb_spi_close: 111,
+    # Transfers bytes with bit banging SPI
+    bb_spi_xfer: 113
   }
   @command_names Map.keys(@commands)
 

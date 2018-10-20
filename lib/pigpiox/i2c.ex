@@ -1,5 +1,6 @@
 defmodule Pigpiox.I2C do
   @moduledoc """
+    I2C elixir wrapper to pigpio API
   Implement I2C pigpiod interface.
   """
   @type i2c_bus :: 0 | 1
@@ -443,13 +444,14 @@ defmodule Pigpiox.I2C do
   def zip_end() do
     [0x00]
   end
-@doc """
-  This fucntion is expected to add zip command to generate zip block
-  zip_add(zip_address(0x12),zip_write(0x66))
-  |>zip_add(zip_read(4))
-  |>zip_add(zip_write([0x23,0x45]))
-  |>zip_add(zip_end)
-"""
+
+  @doc """
+    This fucntion is expected to add zip command to generate zip block
+    zip_add(zip_address(0x12),zip_write(0x66))
+    |>zip_add(zip_read(4))
+    |>zip_add(zip_write([0x23,0x45]))
+    |>zip_add(zip_end)
+  """
   @spec zip_add([any()], [any()]) :: [any()]
   def zip_add(head, tail) when is_list(head) and is_list(tail) do
     List.flatten(head, tail)
